@@ -77,12 +77,41 @@ end
 function updateMainMenu()
 	if isEnterPressed and menuEnabled then
 		if menuActive == 1 then
-			-- initGame()
+			initGame()
 		end
 		if menuActive == 2 then
 			love.event.push( 'quit' )
 		end
 	end
+end
+
+function initGame()
+	gameMode = "getReady"
+	lives = 3
+	score = 0
+	gameOverTimer = 0
+	getReadyTimer = 0
+	gameTimer = 0
+	collectedDots = 0
+	-- initMap()
+	-- initPacman()
+	-- initGhosts()
+	gridOffsetX = (areaX * 0.5) - (gridX * gridSize * 0.5) + offsetX
+	gridOffsetY = (areaY * 0.5) - (gridY * gridSize * 0.5) + offsetY
+	-- initPause()
+end
+
+function initMap()
+	
+    
+	tunnel = {}
+	tunnel[1] = {}
+	tunnel[2] = {}
+	tunnel[1].x = 1
+	tunnel[1].y = 13
+	tunnel[2].x = 26
+	tunnel[2].y = 13
+
 end
 
 --DRAW FUNCTIONS 
@@ -123,14 +152,17 @@ function drawMenu()
     love.graphics.print("Nebojsa Mirkovic", offsetX+160, offsetY+500)
     love.graphics.print(">", offsetX + 160, offsetY + 300 + (menuActive - 1) * 50)
     
+end
 
+function drawCorner(x, y, cornerType)
+    love.graphics.draw(cornerSprites[cornerType], x, y)
 end
 
 function drawGetReady()
 	drawGame()
 	white()
-	love.graphics.setFont(fontScore)
-	love.graphics.print("GET READY!", gridOffsetX + 270, gridOffsetY + 420)
+	love.graphics.setFont(fontBig)
+	love.graphics.print("GET READY!", love.graphics.getWidth() / 2 - 150, love.graphics.getHeight() / 2 - 450)
 end
 
 function drawGame()
@@ -139,12 +171,79 @@ function drawGame()
 	drawScore()
 	drawLives()
 	drawGhosts()
-	drawPacman()
+	-- drawPacman()
 end
 
 
 function drawMaze()
-   
+    local centerX = love.graphics.getWidth() / 2 - 350
+    local centerY = love.graphics.getHeight() / 2 - 375
+
+    local gridSize = 24
+    
+    local corners = require("maps.corners")
+    for i = 1, 30 do
+        local x = centerX
+        local y = centerY + (i - 1) * gridSize
+
+        for j = 1, 28 do
+            if type(corners[i][j]) == "number" then
+                drawCorner(x, y, corners[i][j])
+            end
+
+            x = x + gridSize
+        end
+    end
+end
+
+function drawDots()
+    local centerX = love.graphics.getWidth() / 2 - 340
+    local centerY = love.graphics.getHeight() / 2 - 365
+
+    local gridSize = 24
+    local dots = require("maps.dots")
+    for i = 1, 30 do
+        local x = centerX
+        local y = centerY + (i - 1) * gridSize
+
+        for j = 1, 28 do
+            if dots[i][j] == 1 then
+                drawColoredCircle(x + 2, y + 2, 4)
+            end
+
+            x = x + gridSize
+        end
+    end
+end
+
+
+function drawColoredCircle(x, y, radius)
+    white()
+    love.graphics.circle("fill", x, y, radius)  
+end
+
+function drawScore()
+	love.graphics.setFont(fontScore)
+	white()
+	love.graphics.print("Score ".. tostring(score), gridOffsetX + (gridX - 4) * gridSize, gridOffsetY - 60)
+	love.graphics.print("Level ".. tostring(level), gridOffsetX + gridSize - 20, gridOffsetY - 60)
+end
+
+function drawLives()
+	if lives > 1 then
+		for i = 1, lives-1, 1 do
+			white()
+			love.graphics.draw(pacmanSprites[4][2], gridOffsetX + i * 20, gridOffsetY + gridY * gridSize)
+		end
+	end
+end
+
+function drawGhosts()
+	
+end
+
+function drawPacman()
+	
 end
 
 function resetMenu()
@@ -186,6 +285,39 @@ function loadEverything()
 	fontSmallMedium = love.graphics.newFont(28)
 	fontScore = love.graphics.newFont("fonts/Pacmania.TTF", 28)
     
+    pacmanSprites = {}
+	pacmanSprites[1] = {}
+	pacmanSprites[2] = {}
+	pacmanSprites[3] = {}
+	pacmanSprites[4] = {}
+	pacmanSprites[1][1] = love.graphics.newImage("images/pacman/up/pacman1up.png")
+	pacmanSprites[1][2] = love.graphics.newImage("images/pacman/up/pacman2up.png")
+	pacmanSprites[1][3] = love.graphics.newImage("images/pacman/up/pacman3up.png")
+	pacmanSprites[2][1] = love.graphics.newImage("images/pacman/right/pacman1right.png")
+	pacmanSprites[2][2] = love.graphics.newImage("images/pacman/right/pacman2right.png")
+	pacmanSprites[2][3] = love.graphics.newImage("images/pacman/right/pacman3right.png")
+	pacmanSprites[3][1] = love.graphics.newImage("images/pacman/down/pacman1down.png")
+	pacmanSprites[3][2] = love.graphics.newImage("images/pacman/down/pacman2down.png")
+	pacmanSprites[3][3] = love.graphics.newImage("images/pacman/down/pacman3down.png")
+	pacmanSprites[4][1] = love.graphics.newImage("images/pacman/left/pacman1left.png")
+	pacmanSprites[4][2] = love.graphics.newImage("images/pacman/left/pacman2left.png")
+	pacmanSprites[4][3] = love.graphics.newImage("images/pacman/left/pacman3left.png")
+
+	ghostsSprites = {}
+	ghostsSprites[1] = love.graphics.newImage("images/ghosts/1.png")
+	ghostsSprites[2] = love.graphics.newImage("images/ghosts/2.png")
+	ghostsSprites[3] = love.graphics.newImage("images/ghosts/3.png")
+	ghostsSprites[4] = love.graphics.newImage("images/ghosts/4.png")
+	ghostsSprites[5] = love.graphics.newImage("images/ghosts/safe.png")
+	ghostsSprites[6] = love.graphics.newImage("images/ghosts/eaten.png")
+
+	cornerSprites = {}
+	cornerSprites[1] = love.graphics.newImage("images/maze/1.png")
+	cornerSprites[2] = love.graphics.newImage("images/maze/2.png")
+	cornerSprites[3] = love.graphics.newImage("images/maze/3.png")
+	cornerSprites[4] = love.graphics.newImage("images/maze/4.png")
+	cornerSprites[5] = love.graphics.newImage("images/maze/5.png")
+	cornerSprites[6] = love.graphics.newImage("images/maze/6.png")
 
 	resetMenu()
 	createResolutions()
