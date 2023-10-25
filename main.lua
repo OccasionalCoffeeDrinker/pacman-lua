@@ -47,6 +47,7 @@ local menuMode, menuActive
 local menuTimer
 local menuEnabled
 local menuPositions = 2
+local maze = {}
 
 --UPDATE FUNCTIONS
 
@@ -93,17 +94,108 @@ function initGame()
 	getReadyTimer = 0
 	gameTimer = 0
 	collectedDots = 0
-	-- initMap()
-	-- initPacman()
-	-- initGhosts()
+	initMap()
+	initPacman()
+	initGhosts()
 	gridOffsetX = (areaX * 0.5) - (gridX * gridSize * 0.5) + offsetX
 	gridOffsetY = (areaY * 0.5) - (gridY * gridSize * 0.5) + offsetY
 	-- initPause()
 end
 
 function initMap()
+	local i, j, k
+
+    local mazeData = require("maps.maze")
+    local dotsData = require("maps.dots")
+    local cornersData = require("maps.corners")
+
+    local dots = {}
+    local corners = {}
+
+    for i = 0, gridX, 1 do
+        maze[i] = {}
+        dots[i] = {}
+        corners[i] = {}
+
+        for j = 0, gridY, 1 do
+            maze[i][j] = false
+            dots[i][j] = false
+            corners[i][j] = 0
+        end
+    end
+
+    j = 0
+    k = 0
+    for i = 1, #mazeData do
+		for p=1, #mazeData[i] do
+			local c = mazeData[i][p]
+			if c == 1 then
+				maze[j][k] = true
+			end
+			j = j + 1
+			if j == gridX then
+				j = 0
+				k = k + 1
+			end
+		end
+    end
+
+	j = 0
+    k = 0
+    for i = 1, #dotsData do
+		for p=1, #mazeData[i] do
+			local c = dotsData[i][p]
+			if c == "1" then
+				dots[j][k] = true
+			end
+			j = j + 1
+			if j == gridX then
+				j = 0
+				k = k + 1
+			end
+		end
+    end
+
 	
-    
+	for i = 0, gridX, 1 do
+		corners[i] = {}
+		for j = 0, gridY, 1 do
+			corners[i][j] = 0
+		end
+	end
+
+	j = 0
+	k = 0
+	for i = 1, #cornersData do
+		
+		for p=1, #mazeData[i] do
+			local c = cornersData[i][p]
+			if c == "1" then
+				corners[j][k] = 1
+			end
+			if c == "2" then
+				corners[j][k] = 2
+			end
+			if c == "3" then
+				corners[j][k] = 3
+			end
+			if c == "4" then
+				corners[j][k] = 4
+			end
+			if c == "5" then
+				corners[j][k] = 5
+			end
+			if c == "6" then
+				corners[j][k] = 6
+			end
+			j = j + 1
+			if j == gridX then
+				j = 0
+				k = k + 1
+			end
+		end
+	end
+
 	tunnel = {}
 	tunnel[1] = {}
 	tunnel[2] = {}
@@ -111,9 +203,108 @@ function initMap()
 	tunnel[1].y = 13
 	tunnel[2].x = 26
 	tunnel[2].y = 13
-
 end
 
+function initPacman()
+	pacman = {}
+	pacman.mapX = 13
+	pacman.mapY = 16
+	pacman.lastMapX = pacman.mapX
+	pacman.lastMapY = pacman.mapY
+	pacman.x = pacman.mapX * gridSize + gridSize * 0.5
+	pacman.y = pacman.mapY * gridSize + gridSize * 0.5
+	pacman.speed = 140
+	pacman.size = gridSize * 0.5 - 4
+	pacman.sprite = 1
+	pacman.spriteInc = true
+	pacman.direction = 4
+	pacman.directionText = "left"
+	pacman.nextDirection = 4
+	pacman.nextDirectionText = "left"
+	pacman.movement = 0
+	pacman.distance = 0
+	pacman.image = 1
+	pacman.specialDotActive = false
+	pacman.specialDotTimer = 0
+	pacman.upFree = false
+	pacman.downFree = false
+	pacman.leftFree = false
+	pacman.rightFree = false
+	pacman.sameSpriteTimer = 0
+	if maze[pacman.mapX][pacman.mapY-1] == false then
+		pacman.upFree = true
+	end
+	if maze[pacman.mapX][pacman.mapY+1] == false then
+		pacman.downFree = true
+	end
+	if maze[pacman.mapX-1][pacman.mapY] == false then
+		pacman.leftFree = true
+	end
+	if maze[pacman.mapX+1][pacman.mapY] == false then
+		pacman.rightFree = true
+	end
+end
+
+function initGhosts()
+	ghosts = {}
+	for i = 1, 4, 1 do
+		ghosts[i] = {}
+		ghosts[i].mapX = 0
+		ghosts[i].mapY = 0
+		ghosts[i].x = 0
+		ghosts[i].y = 0
+		ghosts[i].eaten = false
+		ghosts[i].out = false
+		ghosts[i].upFree = false
+		ghosts[i].downFree = false
+		ghosts[i].leftFree = false
+		ghosts[i].rightFree = false
+		ghosts[i].direction = 1
+		ghosts[i].nextDirection = 1
+		ghosts[i].speed = 100
+		ghosts[i].normSpeed = 100
+		ghosts[i].slowSpeed = 70
+	end
+	resetGhostsPosition()
+end
+
+function resetGhostsPosition()
+	ghosts[1].mapX = 12
+	ghosts[1].mapY = 10
+	ghosts[1].direction = 4
+	ghosts[1].nextDirection = 4
+	--
+	ghosts[2].mapX = 15
+	ghosts[2].mapY = 10
+	ghosts[2].direction = 2
+	ghosts[2].nextDirection = 2
+	--
+	ghosts[3].mapX = 13
+	ghosts[3].mapY = 13
+	ghosts[3].direction = 1
+	ghosts[3].nextDirection = 1
+	--
+	ghosts[4].mapX = 14
+	ghosts[4].mapY = 13
+	ghosts[4].direction = 1
+	ghosts[4].nextDirection = 1
+	for i = 1, 4, 1 do
+		ghosts[i].x = ghosts[i].mapX * gridSize + gridSize * 0.5
+		ghosts[i].y = ghosts[i].mapY * gridSize + gridSize * 0.5
+		if maze[ghosts[i].mapX][(ghosts[i].mapY)-1] == false then
+			ghosts[i].upFree = true
+		end
+		if maze[ghosts[i].mapX][(ghosts[i].mapY)+1] == false then
+			ghosts[i].downFree = true
+		end
+		if maze[(ghosts[i].mapX)-1][ghosts[i].mapY] == false then
+			ghosts[i].leftFree = true
+		end
+		if maze[(ghosts[i].mapX)+1][ghosts[i].mapY] == false then
+			ghosts[i].rightFree = true
+		end
+	end
+end
 --DRAW FUNCTIONS 
 
 
@@ -158,6 +349,14 @@ function drawCorner(x, y, cornerType)
     love.graphics.draw(cornerSprites[cornerType], x, y)
 end
 
+function drawGhost(x, y, ghostType)
+    love.graphics.draw(ghostsSprites[ghostType], x, y)
+end
+
+function drawPacman(x, y, i, j)
+    love.graphics.draw(pacmanSprites[i][j], x, y)
+end
+
 function drawGetReady()
 	drawGame()
 	white()
@@ -170,8 +369,11 @@ function drawGame()
 	drawDots()
 	drawScore()
 	drawLives()
-	drawGhosts()
-	-- drawPacman()
+	drawGhost(love.graphics.getWidth() / 2 + 2, love.graphics.getHeight() / 2 - 33, 1)
+	drawGhost(love.graphics.getWidth() / 2 - 18, love.graphics.getHeight() / 2 - 33, 2)
+	drawGhost(love.graphics.getWidth() / 2 - 38, love.graphics.getHeight() / 2 - 33, 3)
+	drawGhost(love.graphics.getWidth() / 2 - 58, love.graphics.getHeight() / 2 - 33, 4)
+	drawPacman(love.graphics.getWidth() / 2 - 18, love.graphics.getHeight() / 2 + 13, 2, 3)
 end
 
 
@@ -225,7 +427,7 @@ end
 function drawScore()
 	love.graphics.setFont(fontScore)
 	white()
-	love.graphics.print("Score ".. tostring(score), gridOffsetX + (gridX - 4) * gridSize, gridOffsetY - 60)
+	love.graphics.print("Score ".. tostring(score), gridOffsetX + (gridX - 7) * gridSize, gridOffsetY - 60)
 	love.graphics.print("Level ".. tostring(level), gridOffsetX + gridSize - 20, gridOffsetY - 60)
 end
 
@@ -236,14 +438,6 @@ function drawLives()
 			love.graphics.draw(pacmanSprites[4][2], gridOffsetX + i * 20, gridOffsetY + gridY * gridSize)
 		end
 	end
-end
-
-function drawGhosts()
-	
-end
-
-function drawPacman()
-	
 end
 
 function resetMenu()
