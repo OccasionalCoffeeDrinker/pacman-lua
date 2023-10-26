@@ -47,7 +47,10 @@ local menuMode, menuActive
 local menuTimer
 local menuEnabled
 local menuPositions = 2
+
 local maze = {}
+local dots = {}
+local corners = {}
 
 --UPDATE FUNCTIONS
 
@@ -71,11 +74,13 @@ function love.update(dt)
 end
 
 
-function updateGame()
-	
-end
-
 function updateMainMenu()
+	menuTimerWait()
+	if isEscPressed then
+		if menuEnabled then
+			love.event.push( 'quit' )
+		end
+	end
 	if isEnterPressed and menuEnabled then
 		if menuActive == 1 then
 			initGame()
@@ -84,6 +89,19 @@ function updateMainMenu()
 			love.event.push( 'quit' )
 		end
 	end
+	if isUpPressed and (menuActive > 1) then
+		if menuEnabled then
+			menuActive = menuActive - 1
+			menuTimer = 0
+		end
+	end
+	if isDownPressed and (menuActive < menuPositions) then
+		if menuEnabled then
+			menuActive = menuActive + 1
+			menuTimer = 0
+		end
+	end
+	menuTimerAdd()
 end
 
 function initGame()
@@ -109,8 +127,6 @@ function initMap()
     local dotsData = require("maps.dots")
     local cornersData = require("maps.corners")
 
-    local dots = {}
-    local corners = {}
 
     for i = 0, gridX, 1 do
         maze[i] = {}
@@ -143,9 +159,9 @@ function initMap()
 	j = 0
     k = 0
     for i = 1, #dotsData do
-		for p=1, #mazeData[i] do
+		for p=1, #dotsData[i] do
 			local c = dotsData[i][p]
-			if c == "1" then
+			if c == 1 then
 				dots[j][k] = true
 			end
 			j = j + 1
@@ -168,26 +184,27 @@ function initMap()
 	k = 0
 	for i = 1, #cornersData do
 		
-		for p=1, #mazeData[i] do
+		for p=1, #cornersData[i] do
 			local c = cornersData[i][p]
-			if c == "1" then
+			if c == 1 then
 				corners[j][k] = 1
 			end
-			if c == "2" then
+			if c == 2 then
 				corners[j][k] = 2
 			end
-			if c == "3" then
+			if c == 3 then
 				corners[j][k] = 3
 			end
-			if c == "4" then
+			if c == 4 then
 				corners[j][k] = 4
 			end
-			if c == "5" then
+			if c == 5 then
 				corners[j][k] = 5
 			end
-			if c == "6" then
+			if c == 6 then
 				corners[j][k] = 6
 			end
+			
 			j = j + 1
 			if j == gridX then
 				j = 0
@@ -224,8 +241,6 @@ function initPacman()
 	pacman.movement = 0
 	pacman.distance = 0
 	pacman.image = 1
-	pacman.specialDotActive = false
-	pacman.specialDotTimer = 0
 	pacman.upFree = false
 	pacman.downFree = false
 	pacman.leftFree = false
@@ -245,6 +260,24 @@ function initPacman()
 	end
 end
 
+function resetPacmanPosition()
+	pacman.mapX = 13
+	pacman.mapY = 16
+	pacman.lastMapX = pacman.mapX
+	pacman.lastMapY = pacman.mapY
+	pacman.x = pacman.mapX * gridSize + gridSize * 0.5
+	pacman.y = pacman.mapY * gridSize + gridSize * 0.5
+	pacman.sprite = 1
+	pacman.spriteInc = true
+	pacman.direction = 4
+	pacman.directionText = "left"
+	pacman.nextDirection = 4
+	pacman.nextDirectionText = "left"
+	pacman.movement = 0
+	pacman.distance = 0
+	pacman.image = 1
+end
+
 function initGhosts()
 	ghosts = {}
 	for i = 1, 4, 1 do
@@ -253,7 +286,6 @@ function initGhosts()
 		ghosts[i].mapY = 0
 		ghosts[i].x = 0
 		ghosts[i].y = 0
-		ghosts[i].eaten = false
 		ghosts[i].out = false
 		ghosts[i].upFree = false
 		ghosts[i].downFree = false
@@ -263,7 +295,6 @@ function initGhosts()
 		ghosts[i].nextDirection = 1
 		ghosts[i].speed = 100
 		ghosts[i].normSpeed = 100
-		ghosts[i].slowSpeed = 70
 	end
 	resetGhostsPosition()
 end
@@ -349,12 +380,16 @@ function drawCorner(x, y, cornerType)
     love.graphics.draw(cornerSprites[cornerType], x, y)
 end
 
-function drawGhost(x, y, ghostType)
-    love.graphics.draw(ghostsSprites[ghostType], x, y)
+function drawGhosts()
+	for i = 1, 4, 1 do
+		white()
+		love.graphics.draw(ghostsSprites[i], ghosts[i].x+gridOffsetX-22, ghosts[i].y+gridOffsetY-22)
+	end
 end
 
-function drawPacman(x, y, i, j)
-    love.graphics.draw(pacmanSprites[i][j], x, y)
+function drawPacman()
+	white()
+	love.graphics.draw(pacmanSprites[pacman.direction][pacman.sprite], pacman.x+gridOffsetX-22, pacman.y+gridOffsetY-22)
 end
 
 function drawGetReady()
@@ -369,11 +404,8 @@ function drawGame()
 	drawDots()
 	drawScore()
 	drawLives()
-	drawGhost(love.graphics.getWidth() / 2 + 2, love.graphics.getHeight() / 2 - 33, 1)
-	drawGhost(love.graphics.getWidth() / 2 - 18, love.graphics.getHeight() / 2 - 33, 2)
-	drawGhost(love.graphics.getWidth() / 2 - 38, love.graphics.getHeight() / 2 - 33, 3)
-	drawGhost(love.graphics.getWidth() / 2 - 58, love.graphics.getHeight() / 2 - 33, 4)
-	drawPacman(love.graphics.getWidth() / 2 - 18, love.graphics.getHeight() / 2 + 13, 2, 3)
+	drawGhosts()
+	drawPacman()
 end
 
 
@@ -384,11 +416,11 @@ function drawMaze()
     local gridSize = 24
     
     local corners = require("maps.corners")
-    for i = 1, 30 do
+    for i = 1, gridY do
         local x = centerX
         local y = centerY + (i - 1) * gridSize
 
-        for j = 1, 28 do
+        for j = 1, gridX do
             if type(corners[i][j]) == "number" then
                 drawCorner(x, y, corners[i][j])
             end
@@ -403,14 +435,13 @@ function drawDots()
     local centerY = love.graphics.getHeight() / 2 - 365
 
     local gridSize = 24
-    local dots = require("maps.dots")
-    for i = 1, 30 do
+    for i = 1, gridY do
         local x = centerX
         local y = centerY + (i - 1) * gridSize
 
-        for j = 1, 28 do
-            if dots[i][j] == 1 then
-                drawColoredCircle(x + 2, y + 2, 4)
+        for j = 1,gridX do
+            if dots[j][i] == true then
+                drawColoredCircle(x + 27, y + 27, 4)
             end
 
             x = x + gridSize
@@ -502,8 +533,6 @@ function loadEverything()
 	ghostsSprites[2] = love.graphics.newImage("images/ghosts/2.png")
 	ghostsSprites[3] = love.graphics.newImage("images/ghosts/3.png")
 	ghostsSprites[4] = love.graphics.newImage("images/ghosts/4.png")
-	ghostsSprites[5] = love.graphics.newImage("images/ghosts/safe.png")
-	ghostsSprites[6] = love.graphics.newImage("images/ghosts/eaten.png")
 
 	cornerSprites = {}
 	cornerSprites[1] = love.graphics.newImage("images/maze/1.png")
@@ -517,6 +546,7 @@ function loadEverything()
 	createResolutions()
 	setResolution(1)
 
+	love.keyboard.setKeyRepeat(true)
 end
 
 --resolution
@@ -540,6 +570,503 @@ function setResolution(res)
 end
 
 
+-- UPDATE FUNCTIONS --
+
+function updatePacman()
+	-- update input --
+	if isUpPressed then
+		pacman.nextDirection = 1
+		pacman.nextDirectionText = "up"		
+	end
+	if isDownPressed then
+		pacman.nextDirection = 3
+		pacman.nextDirectionText = "down"
+	end
+	if isLeftPressed then
+		pacman.nextDirection = 4
+		pacman.nextDirectionText = "left"
+	end
+	if isRightPressed then
+		pacman.nextDirection = 2
+		pacman.nextDirectionText = "right"
+	end
+
+	-- check if pacman reaches a tunnel --
+
+	if (pacman.mapX == tunnel[1].x) and (pacman.mapY == tunnel[1].y) then
+		pacman.mapX = tunnel[2].x - 1
+		pacman.mapY = tunnel[2].y
+		pacman.x = pacman.mapX * gridSize + gridSize * 0.5
+		pacman.y = pacman.mapY * gridSize + gridSize * 0.5
+	end
+
+	if (pacman.mapX == tunnel[2].x) and (pacman.mapY == tunnel[2].y) then
+		pacman.mapX = tunnel[1].x + 1
+		pacman.mapY = tunnel[1].y
+		pacman.x = pacman.mapX * gridSize + gridSize * 0.5
+		pacman.y = pacman.mapY * gridSize + gridSize * 0.5
+	end
+
+
+	-- chceck if left/right/up/down free --
+	pacman.upFree = false
+	pacman.downFree = false
+	pacman.leftFree = false
+	pacman.rightFree = false
+	if maze[pacman.mapX][pacman.mapY-1] == false then
+		pacman.upFree = true
+	end
+	if maze[pacman.mapX][pacman.mapY+1] == false then
+		pacman.downFree = true
+	end
+	if maze[pacman.mapX-1][pacman.mapY] == false then
+		pacman.leftFree = true
+	end
+	if maze[pacman.mapX+1][pacman.mapY] == false then
+		pacman.rightFree = true
+	end
+
+	if pacman.mapY == 10 then
+		if (pacman.mapX == 13) or (pacman.mapX == 14) then
+			pacman.downFree = false
+		end
+	end
+
+	-- check if pacman out of his box --
+	if pacman.x < (pacman.mapX * gridSize + gridSize) then
+		pacman.mapX = pacman.mapX - 1
+	end
+	if pacman.x > (pacman.mapX * gridSize + gridSize) then
+		pacman.mapX = pacman.mapX + 1
+	end
+	if pacman.y < (pacman.mapY * gridSize + gridSize) then
+		pacman.mapY = pacman.mapY - 1
+	end
+	if pacman.y > (pacman.mapY * gridSize + gridSize) then
+		pacman.mapY = pacman.mapY + 1
+	end
+
+	-- calculate pacman movement --
+
+	pacman.movement = delta * pacman.speed
+
+	-- check if pacman can move --
+
+	if pacman.direction == 1 then
+		if pacman.upFree then
+			pacman.y = pacman.y - pacman.movement
+		end
+		if pacman.y > (pacman.mapY * gridSize + 0.5 * gridSize) then
+			pacman.y = pacman.y - pacman.movement
+		end
+	end
+
+	if pacman.direction == 3 then
+		if pacman.downFree then
+			pacman.y = pacman.y + pacman.movement
+		end
+		if pacman.y < (pacman.mapY * gridSize + 0.5 * gridSize) then
+			pacman.y = pacman.y + pacman.movement
+		end
+	end
+
+	if pacman.direction == 2 then
+		if pacman.rightFree then
+			pacman.x = pacman.x + pacman.movement
+		end
+		if pacman.x < (pacman.mapX * gridSize + 0.5 * gridSize) then
+			pacman.x = pacman.x + pacman.movement
+		end
+	end
+
+	if pacman.direction == 4 then
+		if pacman.leftFree then
+			pacman.x = pacman.x - pacman.movement
+		end
+		if pacman.x > (pacman.mapX * gridSize + 0.5 * gridSize) then
+			pacman.x = pacman.x - pacman.movement
+		end
+	end
+
+	-- check if pacman can change direction and if he can, do so --
+
+	if pacman.direction ~= pacman.nextDirection then
+		if (math.abs(pacman.x - (pacman.mapX * gridSize + 0.5 * gridSize)) < 2.5) and (math.abs(pacman.y - (pacman.mapY * gridSize + 0.5 * gridSize)) < 2.5) then
+			if (pacman.nextDirection == 1) and pacman.upFree then
+				pacmanChangeDirection()
+			end
+			if (pacman.nextDirection == 3) and pacman.downFree then
+				pacmanChangeDirection()
+			end
+			if (pacman.nextDirection == 2) and pacman.rightFree then
+				pacmanChangeDirection()
+			end
+			if (pacman.nextDirection == 4) and pacman.leftFree then
+				pacmanChangeDirection()
+			end
+		end
+	end
+
+	-- check if pacman is on a dot --
+	
+
+	if (dots[pacman.mapX][pacman.mapY] == true) then
+		dots[pacman.mapX][pacman.mapY] = false
+		score = score + 1
+		collectedDots = collectedDots + 1
+	end
+
+
+	-- calculate pacman distance and update sprite --
+	if (pacman.lastMapX > pacman.mapX) or (pacman.lastMapX < pacman.mapX) then
+		pacman.lastMapX = pacman.mapX
+		increasePacmanDistance()
+		increasePacmanSprite()
+		pacman.sameSpriteTimer = 0
+	end
+	if (pacman.lastMapY > pacman.mapY) or (pacman.lastMapY < pacman.mapY) then
+		pacman.lastMapY = pacman.mapY
+		increasePacmanDistance()
+		increasePacmanSprite()
+		pacman.sameSpriteTimer = 0
+	end
+	if (pacman.lastMapX == pacman.mapX) and (pacman.lastMapY == pacman.mapY) then
+		pacman.sameSpriteTimer = pacman.sameSpriteTimer + delta
+	end
+	if pacman.sameSpriteTimer > 0.2 then
+		pacman.sprite = 1
+		pacman.spriteInc = true
+	end
+
+end
+
+function increasePacmanDistance()
+	pacman.distance = pacman.distance + 1
+end
+
+function increasePacmanSprite()
+	if pacman.sprite == 3 then
+		pacman.spriteInc = false
+	end
+	if pacman.sprite == 1 then
+		pacman.spriteInc = true
+	end
+	if pacman.spriteInc then
+		pacman.sprite = pacman.sprite + 1
+	end
+	if pacman.spriteInc == false then
+		pacman.sprite = pacman.sprite - 1
+	end
+end
+
+
+function pacmanChangeDirection()
+	pacman.direction = pacman.nextDirection
+	pacman.directionText = pacman.nextDirectionText
+	pacman.x = pacman.mapX * gridSize + gridSize * 0.5
+	pacman.y = pacman.mapY * gridSize + gridSize * 0.5
+end
+
+function updateGhosts()
+	for i = 1, 4, 1 do
+		ghosts[i].speed = ghosts[i].normSpeed
+		if (ghosts[i].mapX == pacman.mapX) and (ghosts[i].mapY == pacman.mapY) then
+			lives = lives - 1
+			gameMode = "getReady"
+			getReadyTimer = 0
+			resetPacmanPosition()
+			resetGhostsPosition()
+		end
+
+		-- check if up/down/left/right free --
+		ghosts[i].upFree = false
+		ghosts[i].downFree = false
+		ghosts[i].leftFree = false
+		ghosts[i].rightFree = false
+		if maze[ghosts[i].mapX][ghosts[i].mapY-1] == false then
+			ghosts[i].upFree = true
+		end
+		if maze[ghosts[i].mapX][ghosts[i].mapY+1] == false then
+			ghosts[i].downFree = true
+		end
+		if maze[ghosts[i].mapX-1][ghosts[i].mapY] == false then
+			ghosts[i].leftFree = true
+		end
+		if maze[ghosts[i].mapX+1][ghosts[i].mapY] == false then
+			ghosts[i].rightFree = true
+		end
+
+		if (ghosts[i].mapX == 21) and (ghosts[i].mapY == 13) then
+			ghosts[i].rightFree = false
+		end
+
+		if (ghosts[i].mapX == 6) and (ghosts[i].mapY == 13) then
+			ghosts[i].leftFree = false
+		end
+
+		if ghosts[i].mapY == 10 then
+			if (ghosts[i].mapX == 13) or (ghosts[i].mapX == 14) then
+				ghosts[i].downFree = false
+			end
+		end
+
+		-- check if ghost out of his box --
+		if ghosts[i].x < (ghosts[i].mapX * gridSize + gridSize) then
+			ghosts[i].mapX = ghosts[i].mapX - 1
+		end
+		if ghosts[i].x > (ghosts[i].mapX * gridSize + gridSize) then
+			ghosts[i].mapX = ghosts[i].mapX + 1
+		end
+		if ghosts[i].y < (ghosts[i].mapY * gridSize + gridSize) then
+			ghosts[i].mapY = ghosts[i].mapY - 1
+		end
+		if ghosts[i].y > (ghosts[i].mapY * gridSize + gridSize) then
+			ghosts[i].mapY = ghosts[i].mapY + 1
+		end
+
+		-- make ghosts move --
+		if gameTimer > 4 then
+			moveGhosts(i)
+		else
+			if i < 3 then
+				moveGhosts(i)
+			end
+		end
+
+		local ghostXdistance = math.abs(ghosts[i].x - (ghosts[i].mapX * gridSize + 0.5 * gridSize))
+		local ghostYdistance = math.abs(ghosts[i].y - (ghosts[i].mapY * gridSize + 0.5 * gridSize))
+		if (ghostXdistance < 2.5) and (ghostYdistance < 2.5) then
+			if (ghosts[i].direction == 1) and (ghosts[i].upFree == false) then
+				randomGhostNexDirection(i)
+				ghostsChangeDirection(i)
+			end
+			if (ghosts[i].direction == 3) and (ghosts[i].downFree == false) then
+				randomGhostNexDirection(i)
+				ghostsChangeDirection(i)
+			end
+			if (ghosts[i].direction == 4) and (ghosts[i].leftFree == false) then
+				randomGhostNexDirection(i)
+				ghostsChangeDirection(i)
+			end
+			if (ghosts[i].direction == 2) and (ghosts[i].rightFree == false) then
+				randomGhostNexDirection(i)
+				ghostsChangeDirection(i)
+			end
+		end
+		
+	end
+end
+
+function randomGhostNexDirection(ghost)
+	local nextDirection
+	local forbiddenDirection
+	if ghosts[ghost].direction == 1 then
+		forbiddenDirection = 3
+	end
+	if ghosts[ghost].direction == 2 then
+		forbiddenDirection = 4
+	end
+	if ghosts[ghost].direction == 3 then
+		forbiddenDirection = 1
+	end
+	if ghosts[ghost].direction == 4 then
+		forbiddenDirection = 2
+	end
+	repeat
+		nextDirection = math.random(1, 4)
+	until (nextDirection ~= ghosts[ghost].nextDirection) and (nextDirection ~= forbiddenDirection)
+	ghosts[ghost].nextDirection = nextDirection
+end
+
+function moveGhosts(ghost)
+	local movement = ghosts[ghost].speed * delta
+	if ghosts[ghost].direction == 1 then
+		if ghosts[ghost].upFree then
+			ghosts[ghost].y = ghosts[ghost].y - movement
+		end
+		if ghosts[ghost].y > (ghosts[ghost].mapY * gridSize + 0.5 * gridSize) then
+			ghosts[ghost].y = ghosts[ghost].y - movement
+		end
+	end
+	if ghosts[ghost].direction == 3 then
+			if ghosts[ghost].downFree then
+			ghosts[ghost].y = ghosts[ghost].y + movement
+		end
+		if ghosts[ghost].y < (ghosts[ghost].mapY * gridSize + 0.5 * gridSize) then
+			ghosts[ghost].y = ghosts[ghost].y + movement
+		end
+	end
+	if ghosts[ghost].direction == 2 then
+		if ghosts[ghost].rightFree then
+			ghosts[ghost].x = ghosts[ghost].x + movement
+		end
+		if ghosts[ghost].x < (ghosts[ghost].mapX * gridSize + 0.5 * gridSize) then
+			ghosts[ghost].x = ghosts[ghost].x + movement
+		end
+	end
+	if ghosts[ghost].direction == 4 then
+		if ghosts[ghost].leftFree then
+			ghosts[ghost].x = ghosts[ghost].x - movement
+		end
+		if ghosts[ghost].x > (ghosts[ghost].mapX * gridSize + 0.5 * gridSize) then
+			ghosts[ghost].x = ghosts[ghost].x - movement
+		end
+	end
+end
+
+function ghostsChangeDirection(ghost)
+	ghosts[ghost].direction = ghosts[ghost].nextDirection
+	ghosts[ghost].x = ghosts[ghost].mapX * gridSize + gridSize * 0.5
+	ghosts[ghost].y = ghosts[ghost].mapY * gridSize + gridSize * 0.5
+end
+
+function nextLevel()
+	collectedDots = 0
+	level = level + 1
+	resetPacmanPosition()
+	resetGhostsPosition()
+	initMap()
+	gameMode = "getReady"
+	for i = 1, 4, 1 do
+		ghosts[i].normSpeed = ghosts[i].normSpeed + 10
+	end
+	pacman.speed = pacman.speed + 2
+end
+
+function menuTimerWait()
+	if menuTimer > 0.2 then
+		menuEnabled = true
+	else
+		menuEnabled = false
+	end
+end
+
+function menuTimerAdd()
+	menuTimer = menuTimer + delta
+end
+
+function updateGame()
+	menuTimerWait()
+	if isEscPressed and menuEnabled then
+		gameMode = "pause"
+		menuTimer = 0
+	end
+	updatePacman()
+	updateGhosts()
+	menuTimerAdd()
+	gameTimer = gameTimer + delta
+	if lives == 0 then
+		gameMode = "gameOver"
+	end
+	if collectedDots == 240 then
+		nextLevel()
+	end
+end
+
+-- -- -- -- -- --
+-- PAUSE --
+-- -- -- -- -- --
+
+local pauseOffsetX
+local pauseOffsetY
+local pauseSizeX
+local pauseSizeY
+local gameOverTimer = 0
+local getReadyTimer = 0
+
+function initPause()
+	pauseOffsetX = gridOffsetX + 6 * gridSize
+	pauseOffsetY = gridOffsetY + 10 * gridSize
+	pauseSizeX = gridX * gridSize - 2 * 6 * gridSize
+	pauseSizeY = gridY * gridSize - 2 * 10 * gridSize
+end
+
+-- DRAW FUNCTIONS --
+
+function drawPause()
+	drawGame()
+	love.graphics.setColor(0, 0, 0, 100)
+	love.graphics.rectangle("fill", 0, 0, resolutions[activeResolution].x, resolutions[activeResolution].y)
+	red()
+	love.graphics.rectangle("fill", pauseOffsetX-1, pauseOffsetY-1, pauseSizeX+2, pauseSizeY+2)
+	love.graphics.setColor(0, 0, 0, 255)
+	love.graphics.rectangle("fill", pauseOffsetX, pauseOffsetY, pauseSizeX, pauseSizeY)
+
+	white()
+	love.graphics.setFont(fontMedium)
+	love.graphics.print("PAUSE", pauseOffsetX+30, pauseOffsetY+20)
+	love.graphics.setFont(fontSmallMedium)
+	if menuActive == 1 then red() else white() end
+	love.graphics.print("RETURN TO GAME", pauseOffsetX+30, pauseOffsetY+80)
+	if menuActive == 2 then red() else white() end
+	love.graphics.print("RETURN TO MENU", pauseOffsetX+30, pauseOffsetY+120)
+	if menuActive == 3 then red() else white() end
+	love.graphics.print("QUIT GAME", pauseOffsetX+30, pauseOffsetY+160)
+end
+
+function drawGameOver()
+	drawGame()
+	love.graphics.setColor(0, 0, 0, 100)
+	love.graphics.rectangle("fill", 0, 0, resolutions[activeResolution].x, resolutions[activeResolution].y)
+
+	white()
+	love.graphics.setFont(fontMedium)
+	love.graphics.print("GAME OVER", love.graphics.getWidth() / 2 - 150, love.graphics.getHeight() / 2)
+	love.graphics.setFont(fontSmall)
+	love.graphics.print("Press space to return to menu", love.graphics.getWidth() / 2 - 150, love.graphics.getHeight() / 2 + 50)
+end
+
+-- UPDATE FUNCTIONS --
+
+function updatePause()
+	menuTimerWait()
+	if isSpacePressed and menuEnabled then
+		menuTimer = 0
+	end
+	if isEscPressed and menuEnabled then
+		gameMode = "game"
+		menuTimer = 0
+		resetMenu()
+	end
+	if isUpPressed and (menuActive > 1) then
+		if menuEnabled then
+			menuActive = menuActive - 1
+			menuTimer = 0
+		end
+	end
+	if isDownPressed and (menuActive < menuPositions) then
+		if menuEnabled then
+			menuActive = menuActive + 1
+			menuTimer = 0
+		end
+	end
+	if isEnterPressed and menuEnabled then
+		if menuActive == 1 then
+			gameMode = "game"
+			menuTimer = 0
+			resetMenu()
+		end
+		if menuActive == 2 then
+			gameMode = "menu"
+			menuMode = "main"
+			menuPositions = 4
+			resetMenu()
+		end
+		if menuActive == 3 then
+			love.event.push( 'quit' )
+		end
+	end
+	menuTimerAdd()
+end
+
+function updateGameOver()
+	if isSpacePressed then
+		gameMode = "menu"
+		menuMode = "main"
+		menuPositions = 2
+		resetMenu()
+	end
+end
 
 function updateGetReady()
 	getReadyTimer = getReadyTimer + delta
@@ -561,6 +1088,9 @@ function love.keypressed(key)
         if menuActive > 2 then
             menuActive = 1
         end
+		if key == " " then
+			isSpacePressed = true
+		end
     elseif key == "return" or key == "space" then
         
         if menuActive == 1 then
@@ -569,5 +1099,54 @@ function love.keypressed(key)
             love.event.quit() 
         end
     end
+end
+
+function love.keypressed( key, unicode )
+	if key == "escape" then
+		isEscPressed = true
+	end
+	if key == " " then
+		isSpacePressed = true
+	end
+	if key == "return" then
+		isEnterPressed = true
+	end
+	if key == "up" then
+		isUpPressed = true
+	end
+	if key == "down" then
+		isDownPressed = true
+	end
+	if key == "left" then
+		isLeftPressed = true
+	end
+	if key == "right" then
+		isRightPressed = true
+	end
+end
+
+
+function love.keyreleased( key, unicode )
+	if key == "escape" then
+		isEscPressed = false
+	end
+	if key == " " then
+		isSpacePressed = false
+	end
+	if key == "return" then
+		isEnterPressed = false
+	end
+	if key == "up" then
+		isUpPressed = false
+	end
+	if key == "down" then
+		isDownPressed = false
+	end
+	if key == "left" then
+		isLeftPressed = false
+	end
+	if key == "right" then
+		isRightPressed = false
+	end
 end
 
